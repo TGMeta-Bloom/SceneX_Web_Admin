@@ -592,6 +592,21 @@
 
     _wireRecommendationEngine() {
       const btn = document.getElementById('btnRunRecommendationEngine');
+
+      // Optional: if backend score recalculation is triggered by UI later,
+      // you can wire it here without touching HTML IDs.
+
+      const recalcBtn = document.getElementById('btnRecalculateScores');
+      if (recalcBtn) {
+        recalcBtn.addEventListener('click', async () => {
+          recalcBtn.disabled = true;
+          try {
+            await this.recalculateAllTalentScores();
+          } finally {
+            recalcBtn.disabled = false;
+          }
+        });
+      }
       const inputCategory = document.getElementById('recTargetCategory');
       const inputSkill = document.getElementById('recTargetSkill');
       const inputDate = document.getElementById('recRequestedDate');
@@ -925,11 +940,206 @@
         .replaceAll('"', '"')
         .replaceAll("'", '&#039;');
     }
+
+    /**
+     * Recalculate all talent scores using current slider weights.
+     * Uses Firebase v9+ Modular SDK (dynamic imports) and writes with writeBatch.
+     */
+    async recalculateAllTalentScores() {
+      // Fetch current slider weights from the View.
+      const wP = Number(document.getElementById('weight-portfolio')?.value);
+      const wS = Number(document.getElementById('weight-skills')?.value);
+      const wE = Number(document.getElementById('weight-experience')?.value);
+      const wC = Number(document.getElementById('weight-completeness')?.value);
+
+      const weights = {
+        portfolio: Number.isFinite(wP) ? wP : 0,
+        skills: Number.isFinite(wS) ? wS : 0,
+        experience: Number.isFinite(wE) ? wE : 0,
+        completeness: Number.isFinite(wC) ? wC : 0,
+      };
+
+      const sum = (weights.portfolio + weights.skills + weights.experience + weights.completeness);
+      if (!sum) {
+        console.warn('[recaculateAllTalentScores] sum of weights is 0, aborting');
+        return { ok: false, reason: 'weights_sum_is_zero' };
+      }
+
+      // Modular SDK imports
+      const {
+        getDocs,
+        collection,
+        query,
+        where,
+        writeBatch,
+        doc,
+      } = await import('https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js');
+
+      const appModule = await import('https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js');
+      // Prefer a global app if already initialized by compat, but we still need modular Firestore.
+      const firebaseCfg = window.SCENEX_FIREBASE_CONFIG;
+      if (!firebaseCfg) {
+        console.warn('[recalculateAllTalentScores] Missing window.SCENEX_FIREBASE_CONFIG');
+        return { ok: false, reason: 'missing_firebase_config' };
+      }
+
+      // Initialize modular app (idempotent)
+      const modularApp = (() => {
+        // If the app.js already initialized compat, we cannot reuse directly for modular.
+        // Use modular initializeApp with same config; Firebase prevents duplicates.
+        return appModule.initializeApp(firebaseCfg);
+      })();
+
+      const { getFirestore } = await import('https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore.js');
+      const firestore = getFirestore(modularApp);
+
+      try {
+        const profilesRef = collection(firestore, 'profiles');
+        const talentsQ = query(profilesRef, where('role', '==', 'talent'));
+        const snap = await getDocs(talentsQ);
+
+        const batch = writeBatch(firestore);
+        let ops = 0;
+
+        snap.forEach((profileDoc) => {
+          const data = profileDoc.data() || {};
+
+          const portfolioScore = Number(data.portfolioScore ?? data.portfolio ?? 0);
+          const skillsScore = Number(data.skillsScore ?? data.skills ?? 0);
+          const experienceScore = Number(data.experienceScore ?? data.experience ?? 0);
+          const completenessScore = Number(data.completenessScore ?? data.completeness ?? 0);
+
+          const score = ((portfolioScore * weights.portfolio) +
+            (skillsScore * weights.skills) +
+            (experienceScore * weights.experience) +
+            (completenessScore * weights.completeness)) / sum;
+
+          let visibility_tier = 'LOW_VISIBILITY';
+          if (score >= 85) visibility_tier = 'FEATURED';
+          else if (score >= 50) visibility_tier = 'NORMAL';
+
+          batch.update(doc(firestore, 'profiles', profileDoc.id), {
+            calculated_score: score,
+            visibility_tier,
+            rankingCalculatedAt: Date.now(),
+          });
+
+          ops++;
+        });
+
+        await batch.commit();
+        console.debug('[recalculateAllTalentScores] committed ops:', ops);
+        return { ok: true, updated: ops };
+      } catch (e) {
+        console.error('[recalculateAllTalentScores] failed:', e);
+        return { ok: false, error: e };
+      }
+    }
   }
+
 
   // Start app
   document.addEventListener('DOMContentLoaded', () => {
+    // --- Admin Login handler (Firebase compat SDK) ---
+
+    // Runs only on pages that contain the login form markup.
+    const loginFormEl = document.querySelector('form');
+    const loginEmailEl = document.getElementById('loginEmail');
+    const loginPasswordEl = document.getElementById('loginPassword');
+    const isLoginPage = !!(loginEmailEl && loginPasswordEl && loginFormEl);
+
+    // If this page doesn't look like the admin login page, skip wiring.
+    if (isLoginPage) {
+
+      const injectAlert = (message) => {
+        // Bootstrap alert markup (works even if Bootstrap isn't loaded).
+        // We still use alert classes for consistency with your existing UI stack.
+        let host = document.getElementById('adminAuthAlertHost');
+        if (!host) {
+          host = document.createElement('div');
+          host.id = 'adminAuthAlertHost';
+          loginFormEl.insertAdjacentElement('beforebegin', host);
+        }
+
+        host.innerHTML = `
+          <div class="alert alert-danger d-flex flex-column gap-1" role="alert" style="margin-bottom: 12px; border-radius: 14px;">
+            <div class="fw-semibold">${message}</div>
+          </div>
+        `;
+      };
+
+      const clearAlert = () => {
+        const host = document.getElementById('adminAuthAlertHost');
+        if (host) host.innerHTML = '';
+      };
+
+      const handleAdminLogin = async (email, password) => {
+        try {
+          // Ensure compat global is ready (some browsers can delay script execution)
+          const startWait = Date.now();
+          while (typeof window.firebase === 'undefined' && Date.now() - startWait < 5000) {
+            await new Promise((r) => setTimeout(r, 50));
+          }
+
+          if (!window.firebase) {
+            throw new Error('Firebase compat not loaded (window.firebase is undefined).');
+          }
+
+          const auth = window.firebase.auth();
+          const db = window.firebase.firestore();
+
+          // 1) Log in
+          const cred = await auth.signInWithEmailAndPassword(email, password);
+          const uid = cred.user.uid;
+
+          // 2) Check role
+          const docSnap = await db.collection('profiles').doc(uid).get();
+          const data = docSnap.exists ? docSnap.data() : {};
+
+          if (docSnap.exists && data.role === 'admin') {
+            window.location.href = 'dashboard.html';
+          } else {
+            await auth.signOut();
+            injectAlert('Access Denied: Unauthorized Administrator Account.');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          injectAlert('Login Failed: ' + error.message);
+        }
+      };
+
+      const triggerLogin = async () => {
+        clearAlert();
+
+        const email = (loginEmailEl.value || '').trim();
+        const password = loginPasswordEl.value || '';
+
+        if (!email || !password) {
+          injectAlert('Please enter your email and password.');
+          return;
+        }
+
+        await handleAdminLogin(email, password);
+      };
+
+      // Submit handler (works if the button is changed to type="submit" later)
+      loginFormEl.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await triggerLogin();
+      });
+
+      // Click handler (current markup uses type="button", so submit may never fire)
+      const loginBtn = loginFormEl.querySelector('button[type="button"], button[type="submit"], button');
+      if (loginBtn) {
+        loginBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await triggerLogin();
+        });
+      }
+    }
+
     // Expose temporary debug helper to the page console.
+
     // Usage:
     //   window.injectTestCandidate()
     // or
@@ -946,15 +1156,20 @@
       }
     };
 
-    const vm = new AdminViewModel();
-    vm.init().catch((e) => {
-      console.error(e);
-      const el = document.getElementById('listenerStatus');
-      if (el) {
-        el.textContent = 'Init failed';
-        el.classList.add('text-danger');
-      }
-    });
+    // Only run the MVVM dashboard logic when the dashboard view exists.
+    // This avoids null DOM lookups on the login page.
+    const shouldInitDashboard = !!document.getElementById('pendingProfilesGrid');
+    if (shouldInitDashboard) {
+      const vm = new AdminViewModel();
+      vm.init().catch((e) => {
+        console.error(e);
+        const el = document.getElementById('listenerStatus');
+        if (el) {
+          el.textContent = 'Init failed';
+          el.classList.add('text-danger');
+        }
+      });
+    }
   });
 
 

@@ -4,280 +4,125 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>SceneX_Web_Admin</title>
+  <title>TGM SceneX Admin Login</title>
 
-  <!-- Bootstrap 5 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <!-- Tailwind via CDN (utilities for this page) -->
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="app-bg">
-  <header class="app-topbar border-bottom border-dark-subtle">
-    <div class="container-fluid px-3 px-md-4 d-flex align-items-center justify-content-between">
-      <div class="d-flex align-items-center gap-2">
-        <div class="brand-badge" aria-hidden="true">SX</div>
-        <div>
-          <div class="fw-semibold text-white">SceneX Web Admin</div>
-          <div class="small text-muted">Enterprise moderation &amp; algorithm calibration</div>
-        </div>
+<body class="min-h-screen bg-[#0f0f0f] text-white">
+  <main class="min-h-screen">
+    <section class="relative w-full min-h-screen">
+      <div class="absolute inset-0">
+        <img
+          src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1600&q=80"
+          alt="Cinematic branding background"
+          class="w-full h-full object-cover" />
+        <div class="absolute inset-0 bg-black/70" aria-hidden="true"></div>
       </div>
-      <div class="d-flex align-items-center gap-3">
-        <div class="text-end">
-          <div class="small text-muted">Environment</div>
-          <div id="envLabel" class="fw-semibold">—</div>
-        </div>
-        <div class="text-end">
-          <div class="small text-muted">Firestore listener</div>
-          <div id="listenerStatus" class="fw-semibold">Connecting…</div>
-        </div>
-        <div class="text-end">
-          <div class="small text-muted">Latency</div>
-          <div id="latencyMs" class="fw-semibold">—</div>
-        </div>
-      </div>
-    </div>
-  </header>
 
-  <div class="app-shell">
-    <aside class="app-sidenav">
-      <div class="px-3 px-md-4 py-4">
-        <div class="text-muted small mb-3">Navigation</div>
-        <nav class="nav flex-column gap-2" id="sideNav" aria-label="Admin navigation">
-          <button class="nav-link app-navlink active" type="button" data-tab-target="#tab-verification">
-            <span class="me-2">🛡️</span> Profile Verification Queue
-          </button>
-          <button class="nav-link app-navlink" type="button" data-tab-target="#tab-calibration">
-            <span class="me-2">🧮</span> Ranking System Calibration
-          </button>
-        </nav>
-
-        <div class="mt-4 pt-3 border-top border-dark-subtle">
-          <div class="text-muted small mb-2">Quick actions</div>
-          <div class="d-grid gap-2">
-            <button class="btn btn-outline-secondary btn-sm" type="button" id="btnRefresh">Refresh</button>
-          </div>
-        </div>
-      </div>
-    </aside>
-
-    <main class="app-main">
-      <div class="container-fluid px-3 px-md-4 py-4">
-        <div class="row g-3 align-items-stretch mb-3">
-          <div class="col-12 col-lg-4">
-            <div class="stat-card">
-              <div class="text-muted small">Pending candidates</div>
-              <div class="stat-value" id="pendingCount">0</div>
-              <div class="stat-sub">Real-time from Firestore</div>
-            </div>
-          </div>
-          <div class="col-12 col-lg-4">
-            <div class="stat-card">
-              <div class="text-muted small">Global calibration</div>
-              <div class="stat-value" id="calibrationStatus">—</div>
-              <div class="stat-sub">Weights &amp; thresholds</div>
-            </div>
-          </div>
-          <div class="col-12 col-lg-4 d-none d-lg-block">
-            <div class="stat-card">
-              <div class="text-muted small">Tip</div>
-              <div class="stat-value" style="font-size:16px;">Use <kbd>Approve</kbd> / <kbd>Reject</kbd></div>
-              <div class="stat-sub">Writes are applied instantly</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- =======================
-             CODEBLOCK 1 - VIEW LAYER
-             Main View Container 1 (Verification Tab)
-        ======================== -->
-        <section id="tab-verification" class="tab-pane">
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-            <div>
-              <h2 class="h4 text-white mb-1">Profile Verification</h2>
-              <div class="text-muted">Moderate all profiles awaiting review.</div>
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-dark border border-secondary" type="button" id="btnExpandAll">Expand</button>
-              <button class="btn btn-outline-secondary" type="button" id="btnCollapseAll">Collapse</button>
-            </div>
-          </div>
-
-          <div class="mb-3 d-flex align-items-center justify-content-between gap-2">
-            <div class="text-muted small" id="profilesMeta">Waiting for Firestore…</div>
-          </div>
-
-          <div id="pendingProfilesGrid" class="row g-3">
-            <!-- Cards injected by ViewModel -->
-          </div>
-
-          <div id="profilesEmpty" class="text-muted py-5 text-center d-none">
-            No profiles waiting for review.
-          </div>
-        </section>
-
-        <!-- =======================
-             CODEBLOCK 1 - VIEW LAYER
-             Main View Container 2 (Calibration Tab)
-        ======================== -->
-        <section id="tab-calibration" class="tab-pane d-none">
-          <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-3">
-            <div>
-              <h2 class="h4 text-white mb-1">Ranking System Calibration</h2>
-              <div class="text-muted">Adjust weights in real time.</div>
-            </div>
-            <div class="d-flex gap-2">
-              <button class="btn btn-outline-secondary" type="button" id="btnResetWeights">Reset</button>
-            </div>
-          </div>
-
-          <div class="row g-3">
-            <div class="col-12 col-lg-6">
-              <div class="stat-card">
-                <div class="text-muted small mb-2">Weights (0 - 100)</div>
-
-                <div class="mb-3">
-                  <div class="scene-range-value">
-                    <div class="text-white fw-semibold">Portfolio</div>
-                    <div class="text-muted small" id="weightPortfolioLabel">50%</div>
-                  </div>
-                  <input id="weightPortfolio" class="scene-range" type="range" min="0" max="100" value="50" />
-                </div>
-
-                <div class="mb-3">
-                  <div class="scene-range-value">
-                    <div class="text-white fw-semibold">Skills</div>
-                    <div class="text-muted small" id="weightSkillsLabel">50%</div>
-                  </div>
-                  <input id="weightSkills" class="scene-range" type="range" min="0" max="100" value="50" />
-                </div>
-
-                <div class="mb-3">
-                  <div class="scene-range-value">
-                    <div class="text-white fw-semibold">Experience</div>
-                    <div class="text-muted small" id="weightExperienceLabel">50%</div>
-                  </div>
-                  <input id="weightExperience" class="scene-range" type="range" min="0" max="100" value="50" />
-                </div>
-
-                <div class="mb-3">
-                  <div class="scene-range-value">
-                    <div class="text-white fw-semibold">Completeness</div>
-                    <div class="text-muted small" id="weightCompletenessLabel">50%</div>
-                  </div>
-                  <input id="weightCompleteness" class="scene-range" type="range" min="0" max="100" value="50" />
-                </div>
-
-                <div class="mt-2 text-muted small">
-                  Slider changes write to <span class="fw-semibold text-white">ranking_calibration</span>.
-                </div>
+      <!-- Content shell: 2 columns, stacks on mobile -->
+      <div class="relative z-10 min-h-screen flex">
+        <div class="hidden lg:block lg:w-1/2">
+          <div class="h-full flex items-center px-10">
+            <div class="max-w-xl">
+              <div class="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-4 py-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-purple-500 to-cyan-400"></span>
+                <span class="text-sm font-semibold text-white/90">TGM SceneX</span>
               </div>
-            </div>
 
-            <div class="col-12 col-lg-6">
-              <div class="stat-card">
-                <div class="d-flex align-items-center justify-content-between mb-2">
-                  <div>
-                    <div class="text-muted small">Visibility tier segments</div>
-                    <div class="small text-muted">Computed from ALL verified profiles using current weights</div>
-                  </div>
-                  <div class="text-muted small" id="tierMeta">—</div>
+              <h1 class="mt-6 text-4xl md:text-5xl font-extrabold leading-tight tracking-tight">
+                TGM SceneX -
+                <span class="bg-gradient-to-r from-purple-400 via-cyan-300 to-amber-300 bg-clip-text text-transparent">
+                  Talent Discovery Platform
+                </span>
+              </h1>
+
+              <p class="mt-4 text-white/75 text-base md:text-lg">
+                Premium media control panel for moderation &amp; algorithm calibration.
+              </p>
+
+              <div class="mt-8 grid gap-3">
+                <div class="rounded-3xl border border-white/10 bg-black/20 backdrop-blur p-4">
+                  <div class="text-sm text-white/70">Signal</div>
+                  <div class="font-bold text-lg">Realtime moderation</div>
                 </div>
-
-                <div class="row g-3">
-                  <div class="col-12">
-                    <div class="p-3 rounded-4 border band-featured">
-                      <div class="d-flex align-items-baseline justify-content-between gap-2">
-                        <div class="fw-semibold">Featured</div>
-                        <div class="text-white fw-semibold" id="tierFeatured">0</div>
-                      </div>
-                      <div class="small" style="opacity:.9;">85+ visibility</div>
-                    </div>
-                  </div>
-                  <div class="col-12">
-                    <div class="p-3 rounded-4 border band-normal">
-                      <div class="d-flex align-items-baseline justify-content-between gap-2">
-                        <div class="fw-semibold">Normal</div>
-                        <div class="text-white fw-semibold" id="tierNormal">0</div>
-                      </div>
-                      <div class="small" style="opacity:.9;">50–84 visibility</div>
-                    </div>
-                  </div>
-                  <div class="col-12">
-                    <div class="p-3 rounded-4 border band-low">
-                      <div class="d-flex align-items-baseline justify-content-between gap-2">
-                        <div class="fw-semibold">Low</div>
-                        <div class="text-white fw-semibold" id="tierLow">0</div>
-                      </div>
-                      <div class="small" style="opacity:.9;">< 50 visibility</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="mt-3 text-muted small">
-                  Segment counts update after each write / listener refresh.
+                <div class="rounded-3xl border border-white/10 bg-black/20 backdrop-blur p-4">
+                  <div class="text-sm text-white/70">Calibration</div>
+                  <div class="font-bold text-lg">Weights &amp; visibility tiers</div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Smart Recommendations & Discovery panel -->
-          <div class="row g-3 mt-1">
-            <div class="col-12">
-              <div class="stat-card">
-                <div class="d-flex align-items-center justify-content-between gap-3 mb-3">
-                  <div>
-                    <h3 class="h5 text-white mb-1">Smart Recommendations &amp; Discovery</h3>
-                    <div class="text-muted small">Simulation over verified profiles: category + skill + availability constraints</div>
-                  </div>
+        <div class="w-full lg:w-1/2 flex items-center justify-center p-5 sm:p-8">
+          <div class="w-full max-w-md">
+            <div class="rounded-3xl border border-white/15 bg-white/5 backdrop-blur-xl p-6 sm:p-8 shadow-2xl">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <h2 class="text-2xl font-bold">Admin Login</h2>
+                  <p class="text-white/70 text-sm mt-1">Sign in to manage SceneX systems.</p>
                 </div>
-
-                <div class="row g-3 align-items-end">
-                  <div class="col-12 col-md-4">
-                    <label class="form-label text-muted small">Target Category</label>
-                    <input id="recTargetCategory" class="form-control bg-transparent border border-dark-subtle text-white" type="text" placeholder="e.g., Actor" />
-                  </div>
-                  <div class="col-12 col-md-4">
-                    <label class="form-label text-muted small">Required Skill</label>
-                    <input id="recTargetSkill" class="form-control bg-transparent border border-dark-subtle text-white" type="text" placeholder="e.g., Improv" />
-                  </div>
-                  <div class="col-12 col-md-3">
-                    <label class="form-label text-muted small">Audition Date</label>
-                    <input id="recRequestedDate" class="form-control bg-transparent border border-dark-subtle text-white" type="date" />
-                  </div>
-                  <div class="col-12 col-md-1 d-grid">
-                    <button id="btnRunRecommendationEngine" class="btn btn-success" type="button">Run</button>
-                  </div>
-                </div>
-
-                <div class="mt-3 d-flex align-items-center justify-content-between">
-                  <div class="text-muted small" id="recMeta">Enter inputs and run the recommendation engine.</div>
-                  <div class="text-muted small" id="recLatency">—</div>
-                </div>
-
-                <div class="mt-3">
-                  <div id="recResultsEmpty" class="text-muted py-4 text-center d-none">No matching verified talents for the selected inputs/date.</div>
-                  <ul id="recResultsList" class="list-group list-group-flush" style="max-height:360px; overflow:auto;"></ul>
+                <div class="hidden sm:flex w-10 h-10 items-center justify-center rounded-2xl bg-gradient-to-r from-purple-500/30 to-cyan-400/20 border border-white/15">
+                  <span class="text-lg font-black">SX</span>
                 </div>
               </div>
+
+              <form class="mt-6" onsubmit="event.preventDefault();">
+                <div class="mb-4">
+                  <label for="loginEmail" class="block text-sm font-semibold text-white/75 mb-2">Email</label>
+                  <input
+                    id="loginEmail"
+                    name="loginEmail"
+                    type="email"
+                    autocomplete="email"
+                    placeholder="admin@scenex.com"
+                    class="w-full rounded-2xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-purple-500/60 focus:ring-2 focus:ring-purple-500/20"
+                    required
+                  />
+                </div>
+
+                <div class="mb-5">
+                  <label for="loginPassword" class="block text-sm font-semibold text-white/75 mb-2">Password</label>
+                  <input
+                    id="loginPassword"
+                    name="loginPassword"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="••••••••"
+                    class="w-full rounded-2xl border border-white/15 bg-black/20 px-4 py-3 outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-400/20"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  class="w-full rounded-2xl bg-gradient-to-r from-purple-600 via-cyan-500 to-amber-400 text-black font-extrabold px-4 py-3 shadow-lg shadow-purple-500/15 hover:brightness-110 transition focus:outline-none focus:ring-4 focus:ring-purple-500/30"
+                >
+                  Admin Login
+                </button>
+
+                <div class="mt-4 text-center text-xs text-white/60">
+                  Demo UI only — connect authentication in your JS layer.
+                </div>
+              </form>
             </div>
           </div>
-        </section>
-
-
+        </div>
       </div>
-    </main>
-  </div>
+    </section>
+  </main>
 
-  <!-- styles.css at bottom (per request) -->
+  <!-- styles.css kept for existing app styling (safe) -->
   <link href="./styles.css" rel="stylesheet" />
 
-  <!--
-    Firebase Compat (required by app.js)
-    Loads Firebase v10 compat so window.firebase.firestore exists.
-    These tags must be present and declared before app.js.
-  -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <!-- Firebase Compat (standard scripts; avoids module/CSP issues) -->
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
 
   <script>
+    // Configuration
     window.SCENEX_FIREBASE_CONFIG = {
       apiKey: "AIzaSyCv6STR4C0atEG9OLZvoYb_61HNrnS2dG0",
       authDomain: "scenex-66e0a.firebaseapp.com",
@@ -286,11 +131,17 @@
       messagingSenderId: "987826703702",
       appId: "1:987826703702:web:0f7bba806af1c26b9b9af7"
     };
+
+    // Initialize
+    firebase.initializeApp(window.SCENEX_FIREBASE_CONFIG);
   </script>
+
+
 
   <script src="./app.js" defer></script>
 </body>
 </html>
+
 
 
 
