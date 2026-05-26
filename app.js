@@ -38,10 +38,16 @@
     async function ensureFirebaseInitialized() {
       if (db) return { ok: true };
 
-      // Compat CDN scripts expected to be loaded by the user. If not, we fail gracefully.
-      const hasCompat = !!(window.firebase && window.firebase.firestore);
-      if (!hasCompat) {
-        return { ok: false, error: 'Firebase compat libraries not found. Include Firebase compat scripts or expose window.firebase.' };
+      // Wait until compat scripts attach to window.firebase.
+      // This prevents “window.firebase is undefined” when scripts load slowly.
+      let attempts = 0;
+      while (typeof window.firebase === 'undefined' && attempts < 50) {
+        await new Promise((r) => setTimeout(r, 100));
+        attempts++;
+      }
+
+      if (!window.firebase || !window.firebase.firestore) {
+        return { ok: false, error: 'Firebase compat scripts failed to load (window.firebase is undefined).' };
       }
 
       const cfg = getFirebaseConfigFromWindow();
@@ -52,6 +58,7 @@
       // Initialize app only once
       app = window.firebase.apps && window.firebase.apps.length ? window.firebase.app() : window.firebase.initializeApp(cfg);
       db = app.firestore();
+
 
       profilesColRef = db.collection('profiles');
       calibrationColRef = db.collection('ranking_calibration');
@@ -1075,18 +1082,14 @@
 
       const handleAdminLogin = async (email, password) => {
         try {
-          // Ensure compat global is ready (some browsers can delay script execution)
-          const startWait = Date.now();
-          while (typeof window.firebase === 'undefined' && Date.now() - startWait < 5000) {
-            await new Promise((r) => setTimeout(r, 50));
+          // If firebase isn't loaded, alert the user but don't loop
+          if (typeof firebase === 'undefined') {
+            throw new Error('Firebase failed to load. Check your internet connection.');
           }
 
-          if (!window.firebase) {
-            throw new Error('Firebase compat not loaded (window.firebase is undefined).');
-          }
+          const auth = (typeof firebase !== 'undefined') ? firebase.auth() : null;
+          const db = (typeof firebase !== 'undefined') ? firebase.firestore() : null;
 
-          const auth = window.firebase.auth();
-          const db = window.firebase.firestore();
 
           // 1) Log in
           const cred = await auth.signInWithEmailAndPassword(email, password);
@@ -1096,11 +1099,11 @@
           const docSnap = await db.collection('profiles').doc(uid).get();
           const data = docSnap.exists ? docSnap.data() : {};
 
-          if (docSnap.exists && data.role === 'admin') {
+          if (docSnap.exists && data.userRole === 'admin') {
             window.location.href = 'dashboard.html';
           } else {
             await auth.signOut();
-            injectAlert('Access Denied: Unauthorized Administrator Account.');
+            injectAlert('Access Denied: You are not an admin.');
           }
         } catch (error) {
           console.error('Login error:', error);

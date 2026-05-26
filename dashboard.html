@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>SceneX Admin Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-app-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-auth-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.7.1/firebase-firestore-compat.min.js"></script>
+
+  <script>
+    (function() {
+      const firebaseConfig = {
+        apiKey: "AIzaSyCv6STR4C0atEG9OLZvoYb_61HNrnS2dG0",
+        authDomain: "scenex-66e0a.firebaseapp.com",
+        projectId: "scenex-66e0a",
+        storageBucket: "scenex-66e0a.firebasestorage.app",
+        messagingSenderId: "987826703702",
+        appId: "1:987826703702:web:0f7bba806af1c26b9b9af7"
+      };
+
+      if (window.firebase) {
+        if (!window.firebase.apps || window.firebase.apps.length === 0) {
+          window.firebase.initializeApp(firebaseConfig);
+          console.log("🔥 [HTML] Firebase context attached and verified!");
+        }
+      } else {
+        console.error("❌ [HTML] Critical Error: Firebase script assets not bound.");
+      }
+    })();
+  </script>
+
+  <script src="./dashboard-model.js"></script>
+  <script src="./dashboard-viewmodel.js"></script>
+</head>
+
+<body class="bg-[#0f0f0f] text-white min-h-screen">
+  <div class="min-h-screen flex">
+    <aside class="w-72 bg-[#121212] border-r border-white/10 fixed inset-y-0 hidden lg:flex flex-col">
+      <div class="p-6">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 via-cyan-400 to-amber-300/90 border border-white/15 flex items-center justify-center font-extrabold tracking-tight">
+          SX
+        </div>
+        <div class="mt-3">
+          <div class="text-sm text-white/70">SceneX Web Admin</div>
+          <div class="text-base font-semibold">Control Panel</div>
+        </div>
+      </div>
+
+      <nav class="px-4 pb-6 overflow-y-auto flex-1">
+        <div class="text-xs uppercase tracking-widest text-white/50 px-2 mb-3">Navigation Router</div>
+        <ul class="space-y-2" id="sidebar-menu">
+          <li>
+            <button onclick="window.DashboardViewModel.switchTab('home')" id="btn-tab-home" class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent bg-white/5 border-purple-500/30 text-white shadow-[0_0_20px_rgba(109,40,217,.12)] transition text-left">
+              <span class="text-purple-300/90">⌂</span>
+              <span class="font-medium text-sm">Dashboard Home</span>
+            </button>
+          </li>
+          <li>
+            <button onclick="window.DashboardViewModel.switchTab('talents')" id="btn-tab-talents" class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-gray-400 hover:text-white hover:bg-white/5 transition text-left">
+              <span class="text-cyan-200/90">👤</span>
+              <span class="font-medium text-sm">Talent Workspace</span>
+            </button>
+          </li>
+          <li>
+            <button onclick="window.DashboardViewModel.switchTab('recruiters')" id="btn-tab-recruiters" class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-gray-400 hover:text-white hover:bg-white/5 transition text-left">
+              <span class="text-amber-200/90">🧩</span>
+              <span class="font-medium text-sm">Recruiter Desk</span>
+            </button>
+          </li>
+          <li>
+            <button onclick="window.DashboardViewModel.switchTab('rankings')" id="btn-tab-rankings" class="w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent text-gray-400 hover:text-white hover:bg-white/5 transition text-left">
+              <span class="text-pink-400">📊</span>
+              <span class="font-medium text-sm">Ranking Management</span>
+            </button>
+          </li>
+        </ul>
+      </nav>
+    </aside>
+
+    <div class="flex-1 lg:ml-72">
+      <header class="sticky top-0 z-20 bg-[#121212]/70 backdrop-blur border-b border-white/10">
+        <div class="p-4 flex items-center justify-between gap-4">
+          <div class="flex-1"></div>
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500/40 to-cyan-400/20 border border-white/15 flex items-center justify-center font-extrabold">A</div>
+              <div>
+                <div class="text-sm font-semibold">Admin Authorized</div>
+                <div class="text-xs text-white/60">System Operator</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="p-6 space-y-6">
+        
+        <div class="rounded-3xl border border-white/10 bg-[#0f0f0f]/60 p-6">
+          <div class="text-white/70 text-sm">Dashboard Analytics</div>
+          <h1 class="text-2xl font-bold mt-1" id="dynamic-view-title">Operations Overview</h1>
+
+          <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            <div class="rounded-3xl bg-[#121212] border border-white/10 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div><div class="text-white/70 text-sm">Total Talents</div><div class="mt-1 text-3xl font-extrabold" id="count-total-talents">0</div></div>
+                <div class="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-300">🎬</div>
+              </div>
+            </div>
+            <div class="rounded-3xl bg-[#121212] border border-white/10 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div><div class="text-white/70 text-sm">Pending Reviews</div><div class="mt-1 text-3xl font-extrabold" id="count-pending-reviews">0</div></div>
+                <div class="w-12 h-12 rounded-2xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center text-cyan-200">⏳</div>
+              </div>
+            </div>
+            <div class="rounded-3xl bg-[#121212] border border-white/10 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div><div class="text-white/70 text-sm">Verified Recruiters</div><div class="mt-1 text-3xl font-extrabold" id="count-verified-recruiters">0</div></div>
+                <div class="w-12 h-12 rounded-2xl bg-amber-300/10 border border-amber-300/20 flex items-center justify-center text-amber-200">🛡️</div>
+              </div>
+            </div>
+            <div class="rounded-3xl bg-[#121212] border border-white/10 p-5">
+              <div class="flex items-start justify-between gap-3">
+                <div><div class="text-white/70 text-sm">Featured Profiles</div><div class="mt-1 text-3xl font-extrabold" id="count-featured-profiles">0</div></div>
+                <div class="w-12 h-12 rounded-2xl bg-purple-400/10 border border-purple-400/20 flex items-center justify-center text-purple-200">⭐</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-content-home" class="space-y-6 block">
+          <div class="rounded-3xl border border-purple-500/20 bg-[#121212] p-6 space-y-4">
+            <h2 class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">Smart Recommendations & Discovery Matcher</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-xs text-gray-400 mb-1 font-semibold uppercase">Target Category</label>
+                <select id="sim-target-category" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-cyan-400">
+                  <option value="Actor">Actor</option> <option value="Model">Model</option> <option value="Dancer">Dancer</option> <option value="Director">Director</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1 font-semibold uppercase">Required Skill Keyword</label>
+                <input type="text" id="sim-target-skill" placeholder="e.g. Martial Arts, Tamil, Athletic" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 outline-none focus:border-cyan-400" />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1 font-semibold uppercase">Audition Production Date</label>
+                <input type="date" id="sim-target-date" class="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-cyan-400" />
+              </div>
+            </div>
+            <button onclick="window.DashboardViewModel.triggerRecommendationQuery()" class="w-full bg-gradient-to-r from-cyan-500 to-purple-600 text-white font-bold py-3 rounded-xl hover:opacity-90 transition">Run Engine Discovery Match</button>
+            <div id="sim-results-wrapper" class="pt-4 border-t border-white/5 hidden">
+              <h3 class="text-sm font-bold text-cyan-400 mb-3">Matching Matrix Results</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="sim-output-grid"></div>
+            </div>
+          </div>
+
+          <div class="rounded-3xl border border-white/10 bg-[#0f0f0f]/60 p-6">
+            <h2 class="text-lg font-bold mb-4" id="queue-display-title">Verification Pipeline Queue</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="pending-reviews-container"></div>
+          </div>
+        </div>
+
+        <div id="tab-content-rankings" class="space-y-6 hidden">
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-1 space-y-6">
+              <div class="rounded-3xl border border-white/10 bg-[#121212] p-6 space-y-5">
+                <div>
+                  <h3 class="text-md font-bold text-white">1. Manage Scoring Weights</h3>
+                  <p class="text-xs text-gray-400 mt-0.5">Calibrate profile priority algorithm bias limits (Bound within safe mathematical limits).</p>
+                </div>
+                <div class="space-y-4 pt-2 border-t border-white/5">
+                  <div>
+                    <label class="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Portfolio Multiplier (20-40%): <span id="lbl-wPortfolio" class="text-purple-400 font-mono">30</span></label>
+                    <input type="range" id="weight-portfolio" min="20" max="40" value="30" class="w-full accent-purple-500 bg-white/5 h-1.5 rounded-lg appearance-none" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Skills Multiplier (10-30%): <span id="lbl-wSkills" class="text-purple-400 font-mono">25</span></label>
+                    <input type="range" id="weight-skills" min="10" max="30" value="25" class="w-full accent-purple-500 bg-white/5 h-1.5 rounded-lg appearance-none" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Experience Multiplier (10-30%): <span id="lbl-wExperience" class="text-purple-400 font-mono">25</span></label>
+                    <input type="range" id="weight-experience" min="10" max="30" value="25" class="w-full accent-purple-500 bg-white/5 h-1.5 rounded-lg appearance-none" />
+                  </div>
+                  <div>
+                    <label class="block text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-1.5">Completeness Multiplier (10-30%): <span id="lbl-wCompleteness" class="text-purple-400 font-mono">20</span></label>
+                    <input type="range" id="weight-completeness" min="10" max="30" value="20" class="w-full accent-purple-500 bg-white/5 h-1.5 rounded-lg appearance-none" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-3xl border border-white/10 bg-[#121212] p-6 space-y-4">
+                <div>
+                  <h3 class="text-md font-bold text-white">2. Update Visibility Thresholds</h3>
+                  <p class="text-xs text-gray-400 mt-0.5">Determine minimal baseline cut-offs configuration parameters.</p>
+                </div>
+                <div class="space-y-3 pt-2 border-t border-white/5 text-xs">
+                  <div>
+                    <label class="block text-gray-400 mb-1 font-semibold uppercase text-[10px]">Featured Tier Cut-off boundary</label>
+                    <input type="number" id="threshold-featured" min="60" max="95" value="85" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-pink-500 font-mono text-sm" />
+                  </div>
+                  <div>
+                    <label class="block text-gray-400 mb-1 font-semibold uppercase text-[10px]">Normal Tier Cut-off boundary</label>
+                    <input type="number" id="threshold-normal" min="30" max="59" value="50" class="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-white outline-none focus:border-pink-500 font-mono text-sm" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-3xl border border-pink-500/30 bg-pink-500/5 p-6 space-y-3">
+                <h3 class="text-md font-bold text-pink-400">3. Apply Engine Rules Globally</h3>
+                <p class="text-xs text-gray-400">Altering settings targets newly approved creators going forward. Click below to execute a retroactive database batch re-index to update all verified records across the live mobile search views instantly.</p>
+                <button onclick="window.DashboardViewModel.triggerGlobalRecalculation()" id="btn-recalc" class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-2">
+                  ⚡ Execute Global System Recalculation
+                </button>
+              </div>
+            </div>
+
+            <div class="lg:col-span-2 rounded-3xl border border-white/10 bg-[#121212] p-6 space-y-4">
+              <div>
+                <h3 class="text-md font-bold text-cyan-400">4. Live Simulation Look-Ahead</h3>
+                <p class="text-xs text-gray-400 mt-0.5">Live look-ahead playground mapping changes down into prioritized cards order in real-time as you drag the sliders.</p>
+              </div>
+              <div class="border-t border-white/5 pt-4 grid grid-cols-1 md:grid-cols-2 gap-4" id="rankings-preview-grid">
+                </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+</body>
+</html>

@@ -117,12 +117,12 @@
   <link href="./styles.css" rel="stylesheet" />
 
   <!-- Firebase Compat (standard scripts; avoids module/CSP issues) -->
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
   <script>
-    // Configuration
+    // Global config object
     window.SCENEX_FIREBASE_CONFIG = {
       apiKey: "AIzaSyCv6STR4C0atEG9OLZvoYb_61HNrnS2dG0",
       authDomain: "scenex-66e0a.firebaseapp.com",
@@ -132,9 +132,13 @@
       appId: "1:987826703702:web:0f7bba806af1c26b9b9af7"
     };
 
-    // Initialize
-    firebase.initializeApp(window.SCENEX_FIREBASE_CONFIG);
+    // Initialize immediately without waiting for app.js
+    if (typeof firebase !== 'undefined') {
+      firebase.initializeApp(window.SCENEX_FIREBASE_CONFIG);
+      console.log("Firebase initialized successfully!");
+    }
   </script>
+
 
 
 
